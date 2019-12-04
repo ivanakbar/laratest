@@ -34,6 +34,27 @@ Class BussinessController extends Controller {
             ], 200);
     }
 
+    public function getPagination($limit, $page) {
+        $offset = $page * $limit;
+        //$data = ModelBussiness::all();
+        $data = ModelBussiness::skip($offset)->take($limit)->get();
+        $res = array();
+
+        foreach($data as $d) :
+            $d->categories = $this->getcategory($d->uniq_id);
+            $d->transactions = $this->gettrx($d->uniq_id);
+            $d->location = $this->getlocation($d->uniq_id);
+
+            $res[] = $d;
+        endforeach;
+
+        return response()->json([
+            'status' => '1',
+            'message' => 'Success',
+            'data' => $res
+            ], 200);
+    }
+
     function getcategory($id) {
         $data = ModelCategory::where('uniq_id',$id)->get();
 

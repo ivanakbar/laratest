@@ -11,99 +11,146 @@ use App\Models\ModelAddress;
 
 use Illuminate\Http\Request;
 
+set_time_limit(500); 
+
 Class UploadController extends Controller {
     private $bussiness, $category, $address, $trx;
     private $user, $review;
 
     public function businesses() {
         $loader = array();
+        $limit = 50;
+        $loop = 0;
+
+        while($loop < 5) {
+            $offset = $loop * $limit;
+
+            $data = $this->getYelp($limit, $offset);
+
+            $data = json_decode($data);
+
+            foreach($data->businesses as $tmp) :
+                //$tmp->review = $this->getReview($tmp->id);
+
+                $this->businesses = new ModelBussiness();
+
+                $this->businesses->uniq_id = $tmp->id;
+                $this->businesses->alias = $tmp->alias;
+                $this->businesses->name = $tmp->name;
+                $this->businesses->image_url = $tmp->image_url;
+                $this->businesses->is_closed = $tmp->is_closed;
+                $this->businesses->url = $tmp->url;
+                $this->businesses->rating = $tmp->rating;
+                $this->businesses->lat = $tmp->coordinates->latitude;
+                $this->businesses->long = $tmp->coordinates->longitude;
+                $this->businesses->phone = $tmp->phone;
+                $this->businesses->display_phone = $tmp->display_phone;
+                $this->businesses->distance = $tmp->distance;
+
+                $this->businesses->save();
+
+                if($tmp->categories) {
+                    foreach($tmp->categories as $cat) :
+                        $this->category = new ModelCategory();
+
+                        $this->category->uniq_id = $tmp->id;
+                        $this->category->alias = $cat->alias;
+                        $this->category->title = $cat->title;
+
+                        $this->category->save();
+
+                        unset($this->category);
+                    endforeach;
+                }
+
+                if($tmp->transactions) {
+                    foreach($tmp->transactions as $trx) :
+                        $this->trx = new ModelTrx();
+
+                        $this->trx->uniq_id = $tmp->id;
+                        $this->trx->content = $trx;
+
+                        $this->trx->save();
+
+                        unset($this->trx);
+                    endforeach;
+                }
+
+                if($tmp->location) {
+                    $this->address = new ModelAddress();
+
+                    $this->address->uniq_id = $tmp->id;
+                    $this->address->address1 = $tmp->location->address1;
+                    $this->address->address2 = $tmp->location->address2;
+                    $this->address->address3 = $tmp->location->address3;
+                    $this->address->city = $tmp->location->city;
+                    $this->address->zip_code = $tmp->location->zip_code;
+                    $this->address->country = $tmp->location->country;
+                    $this->address->state = $tmp->location->state;
+                    $this->address->display_address = "";
+
+                    $this->address->save();
+
+                    unset($this->address);
+                }
+
+                //$tmp->review = json_decode($tmp->review);
+
+                // if($tmp->review->reviews) {
+                //     foreach($tmp->review->reviews as $rev) :
+                //         $this->review = new ModelReview();
+                //         $this->user = new ModelUser();
+
+                //         $this->review->uniq_id = $tmp->id;
+                //         $this->review->userid = $rev->user->id;
+                //         $this->review->url = $rev->url;
+                //         $this->review->text = $rev->text;
+                //         $this->review->rating = $rev->rating;
+                //         $this->review->time_created = $rev->time_created;
+
+                //         $this->user->uniq_id = $rev->user->id;
+                //         $this->user->profile_url = $rev->user->profile_url;
+                //         $this->user->image_url = $rev->user->image_url;
+                //         $this->user->name = $rev->user->name;
+
+                //         $this->review->save();
+                //         $this->user->save();
+
+                //         unset($this->review);
+                //         unset($this->user);
+                //     endforeach;
+                // }
+
+                $loader[] = $this->businesses;
+
+                unset($this->businesses);
+                $data = null;
+            endforeach;  
         
+            $loop++;
+        }
 
-        $data = $this->getYelp();
+        return response()->json([
+            'status' => '1',
+            'message' => 'Success',
+            'data' => $loader
+            ], 200);
+    }
 
-        $data = json_decode($data);
+    public function reviews() {
+        $data = ModelBussiness::all();
+        $review = null;
 
-        foreach($data->businesses as $tmp) :
-            $tmp->review = $this->getReview($tmp->id);
+        foreach($data as $d) :
+            $review = $this->getReview($d->uniq_id);
+            $review = json_decode($review);
 
-            $this->businesses = new ModelBussiness();
-
-            $this->businesses->uniq_id = $tmp->id;
-            $this->businesses->alias = $tmp->alias;
-            $this->businesses->name = $tmp->name;
-            $this->businesses->image_url = $tmp->image_url;
-            $this->businesses->is_closed = $tmp->is_closed;
-            $this->businesses->url = $tmp->url;
-            $this->businesses->rating = $tmp->rating;
-            $this->businesses->lat = $tmp->coordinates->latitude;
-            $this->businesses->long = $tmp->coordinates->longitude;
-            $this->businesses->phone = $tmp->phone;
-            $this->businesses->display_phone = $tmp->display_phone;
-            $this->businesses->distance = $tmp->distance;
-
-            $this->businesses->save();
-
-            if($tmp->categories) {
-                
-
-                foreach($tmp->categories as $cat) :
-                    $this->category = new ModelCategory();
-
-                    $this->category->uniq_id = $tmp->id;
-                    $this->category->alias = $cat->alias;
-                    $this->category->title = $cat->title;
-
-                    $this->category->save();
-
-                    unset($this->category);
-                endforeach;
-
-                
-            }
-
-            if($tmp->transactions) {
-                
-
-                foreach($tmp->transactions as $trx) :
-                    $this->trx = new ModelTrx();
-
-                    $this->trx->uniq_id = $tmp->id;
-                    $this->trx->content = $trx;
-
-                    $this->trx->save();
-
-                    unset($this->trx);
-                endforeach;
-
-                
-            }
-
-            if($tmp->location) {
-                $this->address = new ModelAddress();
-
-                $this->address->uniq_id = $tmp->id;
-                $this->address->address1 = $tmp->location->address1;
-                $this->address->address2 = $tmp->location->address2;
-                $this->address->address3 = $tmp->location->address3;
-                $this->address->city = $tmp->location->city;
-                $this->address->zip_code = $tmp->location->zip_code;
-                $this->address->country = $tmp->location->country;
-                $this->address->state = $tmp->location->state;
-                $this->address->display_address = "";
-
-                $this->address->save();
-
-                unset($this->address);
-            }
-
-            $tmp->review = json_decode($tmp->review);
-
-            if($tmp->review->reviews) {
-                foreach($tmp->review->reviews as $rev) :
+            if($review->reviews) {
+                foreach($review->reviews as $rev) :
                     $this->review = new ModelReview();
                     $this->user = new ModelUser();
 
-                    $this->review->uniq_id = $tmp->id;
+                    $this->review->uniq_id = $d->uniq_id;
                     $this->review->userid = $rev->user->id;
                     $this->review->url = $rev->url;
                     $this->review->text = $rev->text;
@@ -122,20 +169,9 @@ Class UploadController extends Controller {
                     unset($this->user);
                 endforeach;
             }
+        sleep(1);
+        endforeach;
 
-            $loader[] = $this->businesses;
-
-            unset($this->businesses);
-        endforeach;  
-
-        return response()->json([
-            'status' => '1',
-            'message' => 'Success',
-            'data' => $loader
-            ], 200);
-    }
-
-    public function reviews() {
         return response()->json([
             'status' => '1',
             'message' => 'Success',
@@ -144,11 +180,11 @@ Class UploadController extends Controller {
 
     }
 
-    function getYelp() {
+    function getYelp($limit, $offset) {
         $curl = curl_init();
 
         curl_setopt_array($curl, array(
-        CURLOPT_URL => "https://api.yelp.com/v3/businesses/search?location=new+york&term=pasta",
+        CURLOPT_URL => "https://api.yelp.com/v3/businesses/search?location=new+york&term=pasta&limit=$limit&offset=$offset",
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_ENCODING => "",
         CURLOPT_MAXREDIRS => 10,

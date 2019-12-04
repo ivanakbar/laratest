@@ -16,9 +16,11 @@ $router->get('/', function () use ($router) {
 });
 
 $router->get('yelp/api/businesses', 'UploadController@businesses');
+$router->get('yelp/api/reviews', 'UploadController@reviews');
 
 $router->get('business', 'BussinessController@get');
 $router->get('business/{id}', 'BussinessController@getOne');
+$router->get('business/{limit}/{page}', 'BussinessController@getPagination');
 $router->post('business', 'BussinessController@store');
 $router->put('business/{id}', 'BussinessController@update');
 $router->delete('business/{id}', 'BussinessController@  ');
